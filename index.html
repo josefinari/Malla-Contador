@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Malla Curricular — Contador Público (Interactiva)</title>
+<style>
+  :root{
+    --bg: #f6f8fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --accent: #6aa6d6;
+    --accent-2: #9fd3d6;
+    --ok: #67c887;
+    --danger: #ef4444;
+    --glass: rgba(255,255,255,0.7);
+    font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  body{
+    margin:0;
+    padding:24px;
+    background: linear-gradient(180deg, var(--bg), #eef6fb 60%);
+    color:#111827;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  h1{
+    margin:0;
+    font-size:20px;
+    letter-spacing:-0.3px;
+  }
+  p.lead{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+  }
+
+  /* layout */
+  .board{
+    display:grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap:18px;
+    align-items:start;
+  }
+  .column{
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.85));
+    border-radius:12px;
+    padding:14px;
+    box-shadow: 0 6px 18px rgba(16,24,40,0.06);
+    min-height:120px;
+  }
+  .col-title{
+    font-weight:600;
+    margin:0 0 10px 0;
+    font-size:14px;
+    color:#0f172a;
+  }
+
+  /* Ciclo prof - subgrid to split into multiple columns */
+  .ciclo-grid{
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:10px;
+  }
+  @media (max-width:900px){
+    .board{grid-template-columns: 1fr;}
+    .ciclo-grid{grid-template-columns: repeat(2,1fr);}
+  }
+
+  /* materia card */
+  .materia{
+    background:var(--card);
+    border-radius:10px;
+    padding:10px 10px 10px 12px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    cursor:pointer;
+    position:relative;
+    transition:transform .12s ease, box-shadow .12s ease;
+    box-shadow: 0 2px 6px rgba(12,18,30,0.04);
+    border:1px solid rgba(15,23,42,0.03);
+  }
+  .materia:hover{ transform: translateY(-4px); box-shadow:0 10px 22px rgba(16,24,40,0.06); }
+
+  .code{
+    min-width:46px;
+    height:46px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:8px;
+    background:linear-gradient(180deg, var(--accent-2), var(--accent));
+    color:#03314b;
+    font-weight:700;
+    font-size:13px;
+    box-shadow: inset 0 -6px 12px rgba(255,255,255,0.12);
+  }
+  .info{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+  }
+  .name{
+    font-weight:600;
+    font-size:13px;
+    color:#0f172a;
+  }
+  .small{
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  /* approved state */
+  .materia.aprobada{
+    border: 1px solid rgba(103,200,135,0.25);
+    background: linear-gradient(180deg, rgba(103,200,135,0.08), rgba(255,255,255,0));
+  }
+  .materia.aprobada .code{
+    background: linear-gradient(180deg, #d6f6e0, #67c887);
+    color:#064522;
+  }
+  .materia.locked{
+    cursor:default;
+    opacity:0.6;
+    filter:grayscale(.02);
+  }
+
+  /* badge for blocked */
+  .badge{
+    font-size:11px;
+    padding:4px 8px;
+    border-radius:999px;
+    background:linear-gradient(90deg, rgba(10,36,64,0.04), rgba(255,255,255,0.05));
+    color:var(--muted);
+    border:1px solid rgba(15,23,42,0.03);
+  }
+
+  /* tooltip */
+  .tooltip{
+    position:absolute;
+    left:calc(100% + 12px);
+    top:50%;
+    transform:translateY(-50%);
+    min-width:200px;
+    background:#0b1220;
+    color:#fff;
+    padding:8px 10px;
+    border-radius:8px;
+    font-size:12px;
+    box-shadow:0 8px 28px rgba(2,6,23,0.4);
+    display:none;
+    z-index:30;
+  }
+  .materia:hover .tooltip{ display:block; }
+  .tooltip strong{ color:#9dd7ff; font-weight:600; }
+
+  /* controls */
+  .controls{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+    align-items:center;
+    justify-content:flex-end;
+  }
+  button.btn{
+    background:var(--card);
+    border:1px solid rgba(15,23,42,0.06);
+    padding:8px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  .legend{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .legend .dot{
+    width:12px;height:12px;border-radius:3px;
+    display:inline-block;margin-right:6px;
+  }
+  .dot.apr{background:linear-gradient(180deg,#d6f6e0,#67c887);}
+  .dot.lock{background:linear-gradient(180deg,#fff1f0,#ffb4a6);}
+
+  footer small{ color:var(--muted); }
+
+  /* little helper for count */
+  .count{
+    font-size:13px;
+    color:var(--muted);
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Malla Curricular — Contador Público</h1>
+    <p class="lead">Marca materias como aprobadas. Las materias bloqueadas muestran qué te falta. El progreso se guarda en tu navegador.</p>
+  </div>
+  <div style="margin-left:auto; text-align:right">
+    <div class="count" id="aprobCount">Aprobadas: 0</div>
+    <div class="count" id="remainingCount">Faltan: 0</div>
+  </div>
+</header>
+
+<section class="board" id="board">
+  <div class="column" id="primertramo-col">
+    <div class="col-title">Primer Tramo</div>
+    <div id="primertramo"></div>
+  </div>
+
+  <div class="column" id="segundotramo-col">
+    <div class="col-title">Segundo Tramo</div>
+    <div id="segundotramo"></div>
+  </div>
+
+  <div class="column" id="cicloprof-col">
+    <div class="col-title">Ciclo Profesional</div>
+    <div class="ciclo-grid" id="cicloprof"></div>
+    <div style="margin-top:12px;" class="legend">
+      <div style="display:flex;align-items:center"><span class="dot apr"></span> Aprobada</div>
+      <div style="display:flex;align-items:center"><span class="dot lock"></span> Bloqueada</div>
+      <div style="margin-left:auto"></div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="reset">Reiniciar progreso</button>
+      <button class="btn" id="export">Exportar (JSON)</button>
+    </div>
+  </div>
+</section>
+
+<footer style="margin-top:20px">
+  <small>Archivo local - guardado en <code>localStorage</code>. Creado dinámicamente.</small>
+</footer>
+
+<script>
+/*
+  Malla interactiva — JavaScript
+  - estructura de materias con prerrequisitos
+  - lógica de bloqueo y guardado en localStorage
+*/
+
+const primerTramoCodes = ["245","241","242","246","244","243"];
+const segundoTramoCodes = ["248","252","250","247","249","251"];
+// define cada materia con su codigo, nombre y prereqs (varios tipos)
+const materias = [
+  // Primer tramo (sin prereqs)
+  {code:"245", name:"Álgebra"},
+  {code:"241", name:"Análisis Matemático I"},
+  {code:"242", name:"Economía"},
+  {code:"246", name:"Historia económica y social general"},
+  {code:"244", name:"Metodología de las Ciencias Sociales"},
+  {code:"243", name:"Sociología"},
+
+  // Segundo tramo (requiere primer tramo -> interpretaremos como "todos del primer tramo")
+  {code:"248", name:"Estadística I", prereqGroupAll: "primer"},
+  {code:"252", name:"Administración General", prereqGroupAll: "primer"},
+  {code:"250", name:"Microeconomía I", prereqGroupAll: "primer"},
+  {code:"247", name:"Teoría contable", prereqGroupAll: "primer"},
+  {code:"249", name:"Historia económica y social argentina", prereqGroupAll: "primer"},
+  {code:"251", name:"Instituciones de Derecho Público", prereqGroupAll: "primer"},
+
+  // Ciclo Profesional
+  {code:"275", name:"Tecnología de la información", prereqCodes: ["274"]},
+  {code:"278", name:"Macroeconomía y Política económica", prereqGroupAny: "segundo"},
+  {code:"276", name:"Cálculo financiero", prereqCodes: ["248"]},
+  {code:"274", name:"Sistemas Administrativos", prereqCodes: ["252"]},
+  {code:"351", name:"Sistemas Contables", prereqCodes: ["247"]},
+  {code:"279", name:"Administración Financiera", prereqCodes: ["276"]},
+  {code:"353", name:"Sistemas de Costos", prereqCodes: ["247"]},
+  {code:"1359", name:"Derecho Económico", prereqGroupAny: "segundo"},
+  {code:"1352", name:"Contabilidad Financiera", prereqCodes: ["351","353"]},
+  {code:"362", name:"Gestión y costos para contadores", prereqCodes: ["353"]},
+  {code:"273", name:"Instituciones de Derecho Privado", prereqCodes: ["1359"]},
+  {code:"1330", name:"Contabilidad Social y Ambiental", prereqCodes: ["1352"]},
+  {code:"356", name:"Teoría y Técnica impositiva I", prereqCodes: ["251","1352"]},
+  {code:"1374", name:"Contabilidad Gubernamental y Control de Gestión", prereqCodes: ["1352","278"]},
+  {code:"354", name:"Derecho del Trabajo y de la Seguridad Social", prereqCodes: ["251","1359"]},
+  {code:"355", name:"Auditoría", prereqCodes: ["362","1352"]},
+  {code:"1358", name:"Taller de Actuación Profesional Judicial", prereqCodes: ["355","1360"]},
+  {code:"357", name:"Teoría y Técnica impositiva II", prereqCodes: ["356"]},
+  // 1361: requiere que solo falten 5 materias a aprobar -> implementado como: desbloquea cuando aprobadas >= total - 5
+  {code:"1361", name:"Taller de Práctica Profesional en Organizaciones", prereqRemainingAtMost: 5},
+  {code:"1360", name:"Derecho, Crédito, Bursátil e Insolvencia", prereqCodes: ["273","354"]},
+  // materia optativa: requiere por lo menos una materia del ciclo profesional aprobada
+  {code:"OPT", name:"Materia optativa (opcional)", prereqAnyInCycle: true}
+];
+
+// helpers: find materia by code
+const materiaMap = {};
+materias.forEach(m => materiaMap[m.code] = m);
+
+// storage key
+const STORAGE_KEY = "malla_contador_aprobadas_v1";
+
+// estado: set de aprobadas (strings)
+let aprobadas = new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"));
+
+// función que determina si una materia está desbloqueada
+function isUnlocked(code){
+  const m = materiaMap[code];
+  // Si no tiene prereqs => unlocked
+  if(!m) return false;
+  // prereqCodes: todos obligatorios
+  if(m.prereqCodes){
+    for(const req of m.prereqCodes){
+      if(!aprobadas.has(req)) return false;
+    }
+  }
+  // prereqGroupAll: todas del grupo (primer)
+  if(m.prereqGroupAll){
+    if(m.prereqGroupAll === "primer"){
+      for(const c of primerTramoCodes) if(!aprobadas.has(c)) return false;
+    }
+    if(m.prereqGroupAll === "segundo"){
+      for(const c of segundoTramoCodes) if(!aprobadas.has(c)) return false;
+    }
+  }
+  // prereqGroupAny: al menos una del grupo
+  if(m.prereqGroupAny){
+    if(m.prereqGroupAny === "segundo"){
+      let ok = segundoTramoCodes.some(c => aprobadas.has(c));
+      if(!ok) return false;
+    }
+    if(m.prereqGroupAny === "primer"){
+      let ok = primerTramoCodes.some(c => aprobadas.has(c));
+      if(!ok) return false;
+    }
+  }
+  // prereqAnyInCycle: al menos una del ciclo profesional aprobada
+  if(m.prereqAnyInCycle){
+    // ciclo professional = todos los códigos que no están en primer ni en segundo, excepto OPT
+    const cycleCodes = materias.map(x=>x.code).filter(c=>!primerTramoCodes.includes(c) && !segundoTramoCodes.includes(c) && c!=="OPT");
+    let ok = cycleCodes.some(c => aprobadas.has(c));
+    if(!ok) return false;
+  }
+  // prereqRemainingAtMost: remaining <= provided value
+  if(m.prereqRemainingAtMost !== undefined){
+    // compute how many materias total must be aprobadas? We'll consider total of all materias (except OPT)
+    const allCodes = materias.map(x=>x.code).filter(c=>c!=="OPT");
+    const approvedCount = allCodes.filter(c=>aprobadas.has(c)).length;
+    const remaining = allCodes.length - approvedCount;
+    if(remaining > m.prereqRemainingAtMost) return false;
+  }
+  return true;
+}
+
+// compute unmet requirements for tooltip
+function unmetRequirements(code){
+  const m = materiaMap[code];
+  const unmet = [];
+  if(!m) return unmet;
+  if(m.prereqCodes){
+    for(const req of m.prereqCodes) if(!aprobadas.has(req)) {
+      const name = materiaMap[req] ? materiaMap[req].name : req;
+      unmet.push(`Aprobar: ${req} ${name}`);
+    }
+  }
+  if(m.prereqGroupAll){
+    if(m.prereqGroupAll === "primer"){
+      const falt = primerTramoCodes.filter(c=>!aprobadas.has(c));
+      if(falt.length) unmet.push(`Completar el Primer Tramo (${falt.length} pendientes)`);
+    }
+    if(m.prereqGroupAll === "segundo"){
+      const falt = segundoTramoCodes.filter(c=>!aprobadas.has(c));
+      if(falt.length) unmet.push(`Completar el Segundo Tramo (${falt.length} pendientes)`);
+    }
+  }
+  if(m.prereqGroupAny){
+    if(m.prereqGroupAny === "segundo"){
+      const ok = segundoTramoCodes.some(c=>aprobadas.has(c));
+      if(!ok) unmet.push("Aprobar al menos 1 materia del Segundo Tramo");
+    }
+  }
+  if(m.prereqAnyInCycle){
+    const cycleCodes = materias.map(x=>x.code).filter(c=>!primerTramoCodes.includes(c) && !segundoTramoCodes.includes(c) && c!=="OPT");
+    const ok = cycleCodes.some(c=>aprobadas.has(c));
+    if(!ok) unmet.push("Aprobar al menos 1 materia del Ciclo Profesional");
+  }
+  if(m.prereqRemainingAtMost !== undefined){
+    const allCodes = materias.map(x=>x.code).filter(c=>c!=="OPT");
+    const approvedCount = allCodes.filter(c=>aprobadas.has(c)).length;
+    const remaining = allCodes.length - approvedCount;
+    if(remaining > m.prereqRemainingAtMost) unmet.push(`Faltan ${remaining} materias (se requiere faltar como máximo ${m.prereqRemainingAtMost})`);
+  }
+  return unmet;
+}
+
+// UI render
+function crearCard(m){
+  const div = document.createElement("div");
+  div.className = "materia";
+  div.dataset.code = m.code;
+
+  const codeBox = document.createElement("div");
+  codeBox.className = "code";
+  codeBox.textContent = m.code;
+  div.appendChild(codeBox);
+
+  const info = document.createElement("div");
+  info.className = "info";
+  const name = document.createElement("div");
+  name.className = "name";
+  name.textContent = m.name;
+  const small = document.createElement("div");
+  small.className = "small";
+
+  // show prereq hint briefly
+  const pr = [];
+  if(m.prereqCodes) pr.push("Requiere: " + m.prereqCodes.join(", "));
+  if(m.prereqGroupAll) pr.push("Requiere: todo el " + (m.prereqGroupAll==="primer"?"Primer Tramo":"Segundo Tramo"));
+  if(m.prereqGroupAny) pr.push("Requiere: 1 del " + (m.prereqGroupAny==="segundo"?"Segundo Tramo":"Primer Tramo"));
+  if(m.prereqAnyInCycle) pr.push("Requiere: 1 del Ciclo Profesional");
+  if(m.prereqRemainingAtMost !== undefined) pr.push(`Requiere: faltar como máximo ${m.prereqRemainingAtMost} materias`);
+  small.textContent = pr.join(" • ");
+  info.appendChild(name);
+  info.appendChild(small);
+  div.appendChild(info);
+
+  // tooltip
+  const tip = document.createElement("div");
+  tip.className = "tooltip";
+  tip.innerHTML = "<strong>Bloqueada — falta:</strong><br><span class='tip-list'></span>";
+  div.appendChild(tip);
+
+  // click handling
+  div.addEventListener("click", (ev)=>{
+    ev.stopPropagation();
+    const code = m.code;
+    if(!isUnlocked(code)){
+      // do nothing if locked
+      return;
+    }
+    if(aprobadas.has(code)){
+      aprobadas.delete(code);
+    } else {
+      aprobadas.add(code);
+    }
+    // After changing, enforce: any materia que quede bloqueada y esté marcada, se desmarca automáticamente
+    enforceConsistency();
+    save();
+    renderAll();
+  });
+
+  return div;
+}
+
+// enforce: if a materia está marcada pero ahora bloqueada -> quitar marca
+function enforceConsistency(){
+  // iterate aprobadas copy
+  const copy = new Set([...aprobadas]);
+  for(const c of copy){
+    if(!isUnlocked(c)){
+      aprobadas.delete(c);
+    }
+  }
+}
+
+// storage
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...aprobadas]));
+}
+
+// render todas
+function renderAll(){
+  // clear containers
+  const p = document.getElementById("primertramo");
+  const s = document.getElementById("segundotramo");
+  const c = document.getElementById("cicloprof");
+  p.innerHTML = ""; s.innerHTML = ""; c.innerHTML = "";
+
+  // primer tramo
+  primerTramoCodes.forEach(code=>{
+    const m = materiaMap[code];
+    const card = crearCard(m);
+    applyStateToCard(card, m);
+    p.appendChild(card);
+  });
+
+  // segundo tramo
+  segundoTramoCodes.forEach(code=>{
+    const m = materiaMap[code];
+    const card = crearCard(m);
+    applyStateToCard(card, m);
+    s.appendChild(card);
+  });
+
+  // ciclo: all materias whose code not in primer/segundo
+  const cycle = materias.filter(x => !primerTramoCodes.includes(x.code) && !segundoTramoCodes.includes(x.code));
+  // make visually pleasing order: split across grid cells automatically
+  cycle.forEach(m=>{
+    const card = crearCard(m);
+    applyStateToCard(card, m);
+    c.appendChild(card);
+  });
+
+  // update counters
+  const total = materias.filter(x=>x.code!=="OPT").length;
+  const approvedCount = materias.map(x=>x.code).filter(c=>aprobadas.has(c)).length;
+  document.getElementById("aprobCount").textContent = `Aprobadas: ${approvedCount}`;
+  document.getElementById("remainingCount").textContent = `Faltan: ${Math.max(0, total - approvedCount)}`;
+}
+
+// apply visual state to card
+function applyStateToCard(card, m){
+  const code = m.code;
+  card.classList.remove("aprobada","locked");
+  const tipList = card.querySelector(".tip-list");
+  const unmet = unmetRequirements(code);
+
+  if(isUnlocked(code)){
+    // enabled
+    if(aprobadas.has(code)){
+      card.classList.add("aprobada");
+    }
+    // tooltip hidden (only show when locked)
+    card.querySelector(".tooltip").style.display = "none";
+  } else {
+    // locked
+    card.classList.add("locked");
+    // if was approved but now locked, remove approval (handled elsewhere also)
+    if(aprobadas.has(code)){
+      aprobadas.delete(code);
+      save();
+    }
+    // populate tooltip list
+    if(unmet.length){
+      tipList.innerHTML = unmet.map(u=>`• ${u}`).join("<br>");
+    } else {
+      tipList.innerHTML = "• Requisitos no satisfechos";
+    }
+    // show tooltip on hover: implement display block so the CSS rule works
+    card.querySelector(".tooltip").style.display = "block";
+  }
+}
+
+// initialize and attach controls
+document.getElementById("reset").addEventListener("click", ()=>{
+  if(confirm("¿Borrar todo el progreso guardado?")) {
+    aprobadas = new Set();
+    save();
+    renderAll();
+  }
+});
+document.getElementById("export").addEventListener("click", ()=>{
+  const data = {aprobadas:[...aprobadas], fecha: new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "malla_aprobadas.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+// initial consistency (some stored codes may no longer be valid)
+enforceConsistency();
+save();
+renderAll();
+
+// Auto-save on beforeunload (already saved on actions, but be safe)
+window.addEventListener("beforeunload", ()=> save());
+</script>
+</body>
+</html>
